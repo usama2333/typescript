@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+// import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -92,10 +93,29 @@ async function generateReport(repoOwner: string, repoName: string) {
 
     return report;
 }
+// async function sendEmail(report: any) {
+//     const transporter = nodemailer.createTransport({
+//         service: 'gmail',
+//         auth: {
+//             user: process.env.EMAIL_ADDRESS,  
+//             pass: process.env.EMAIL_PASSWORD,
+//         },
+//     });
+
+//     const mailOptions = {
+//         user: process.env.EMAIL_ADDRESS, 
+//         to: 'usama.wizz@gmail.com',
+//         subject: 'Weekly GitHub Metrics Report',
+//         text: JSON.stringify(report, null, 2),
+//     };
+
+//     await transporter.sendMail(mailOptions);
+// }
 
 (async () => {
     try {
         const report = await generateReport('rapid-recovery-agency-inc', 'foundd-js');
+        // await sendEmail(report);
         console.log('Report:', report);
     } catch (error) {
         console.error('Error:', error);
