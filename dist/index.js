@@ -93,12 +93,27 @@ async function generateReport(repoOwner, repoName) {
     }
     return report;
 }
-async function getAllRepositories(repoOwner) {
+// async function getAllRepositories(repoOwner: string) {
+//     let page = 1;
+//     let repos: any[] = [];
+//     while (true) {
+//         const response = await octokit.repos.listForUser({
+//             username: repoOwner,
+//             per_page: 100,
+//             page: page
+//         });
+//         if (response.data.length === 0) break;
+//         repos = repos.concat(response.data);
+//         page++;
+//     }
+//     return repos.map(repo => repo.name);
+// }
+async function getAllRepositories(orgName) {
     let page = 1;
     let repos = [];
     while (true) {
-        const response = await octokit.repos.listForUser({
-            username: repoOwner,
+        const response = await octokit.repos.listForOrg({
+            org: orgName,
             per_page: 100,
             page: page
         });
@@ -109,6 +124,18 @@ async function getAllRepositories(repoOwner) {
     }
     return repos.map(repo => repo.name);
 }
+// async function testPrivateRepoAccess() {
+//     try {
+//         const response = await octokit.repos.get({
+//             owner: 'rapid-recovery-agency-inc',
+//             repo: 'foundd-js',
+//         });
+//         console.log('Repository Data:', response.data);
+//     } catch (error) {
+//         console.error('Error Accessing Private Repository:', error);
+//     }
+// }
+// testPrivateRepoAccess();
 (async () => {
     try {
         const repoOwner = 'rapid-recovery-agency-inc';
