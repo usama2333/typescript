@@ -1,5 +1,4 @@
 import { Octokit } from '@octokit/rest';
-// import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -12,16 +11,25 @@ async function fetchAllCommits(repoOwner: string, repoName: string, since: strin
     let page = 1;
     let commits: any[] = [];
     while (true) {
-        const response = await octokit.repos.listCommits({
-            owner: repoOwner,
-            repo: repoName,
-            since: since,
-            per_page: 100,
-            page: page
-        });
-        if (response.data.length === 0) break;
-        commits = commits.concat(response.data);
-        page++;
+        try {
+            const response = await octokit.repos.listCommits({
+                owner: repoOwner,
+                repo: repoName,
+                since: since,
+                per_page: 100,
+                page: page
+            });
+            if (response.data.length === 0) break;
+            commits = commits.concat(response.data);
+            page++;
+        } catch (error: any) {
+            if (error.status === 409) {
+                console.warn(`Repository ${repoName} is empty or has no commits since ${since}`);
+                break;
+            } else {
+                throw error;
+            }
+        }
     }
     return commits;
 }
@@ -30,36 +38,33 @@ async function fetchAllPullRequests(repoOwner: string, repoName: string, since: 
     let page = 1;
     let pullRequests: any[] = [];
     while (true) {
-        const response = await octokit.pulls.list({
-            owner: repoOwner,
-            repo: repoName,
-            state: 'all',
-            since: since,
-            per_page: 100,
-            page: page
-        });
-        if (response.data.length === 0) break;
-        pullRequests = pullRequests.concat(response.data);
-        page++;
+        try {
+            const response = await octokit.pulls.list({
+                owner: repoOwner,
+                repo: repoName,
+                state: 'all',
+                since: since,
+                per_page: 100,
+                page: page
+            });
+            if (response.data.length === 0) break;
+            pullRequests = pullRequests.concat(response.data);
+            page++;
+        } catch (error: any) {
+            if (error.status === 409) {
+                console.warn(`Repository ${repoName} is empty or has no pull requests since ${since}`);
+                break;
+            } else {
+                throw error;
+            }
+        }
     }
     return pullRequests;
-}
-
-async function getPullRequestReviews(repoOwner: string, repoName: string, pullNumber: number) {
-    const reviews = await octokit.pulls.listReviews({
-        owner: repoOwner,
-        repo: repoName,
-        pull_number: pullNumber,
-    });
-    return reviews.data;
 }
 
 async function aggregateMetrics(repoOwner: string, repoName: string, since: string) {
     const commits = await fetchAllCommits(repoOwner, repoName, since);
     const pullRequests = await fetchAllPullRequests(repoOwner, repoName, since);
-
-    console.log('Commits:', commits);
-    console.log('Pull Requests:', pullRequests);
 
     const userMetrics: any = {};
 
@@ -74,7 +79,7 @@ async function aggregateMetrics(repoOwner: string, repoName: string, since: stri
         userMetrics[author] = userMetrics[author] || { commits: 0, pullRequests: 0, reviews: 0 };
         userMetrics[author].pullRequests += 1;
     });
-    console.log('User Metrics:', userMetrics);
+
     return userMetrics;
 }
 
@@ -88,35 +93,38 @@ async function generateReport(repoOwner: string, repoName: string) {
 
     const report: any = {};
     for (const [label, since] of Object.entries(periods)) {
-        report[label] = await aggregateMetrics(repoOwner, repoName, since);
+        const metrics = await aggregateMetrics(repoOwner, repoName, since);
+        report[label] = metrics;
     }
 
     return report;
 }
-// async function sendEmail(report: any) {
-//     const transporter = nodemailer.createTransport({
-//         service: 'gmail',
-//         auth: {
-//             user: process.env.EMAIL_ADDRESS,  
-//             pass: process.env.EMAIL_PASSWORD,
-//         },
-//     });
 
-//     const mailOptions = {
-//         user: process.env.EMAIL_ADDRESS, 
-//         to: 'usama.wizz@gmail.com',
-//         subject: 'Weekly GitHub Metrics Report',
-//         text: JSON.stringify(report, null, 2),
-//     };
-
-//     await transporter.sendMail(mailOptions);
-// }
+async function getAllRepositories(repoOwner: string) {
+    let page = 1;
+    let repos: any[] = [];
+    while (true) {
+        const response = await octokit.repos.listForUser({
+            username: repoOwner,
+            per_page: 100,
+            page: page
+        });
+        if (response.data.length === 0) break;
+        repos = repos.concat(response.data);
+        page++;
+    }
+    return repos.map(repo => repo.name);
+}
 
 (async () => {
     try {
-        const report = await generateReport('rapid-recovery-agency-inc', 'foundd-js');
-        // await sendEmail(report);
-        console.log('Report:', report);
+        const repoOwner = 'rapid-recovery-agency-inc';
+        const repoNames = await getAllRepositories(repoOwner);
+
+        for (const repoName of repoNames) {
+            const report = await generateReport(repoOwner, repoName);
+            console.log(`Report for ${repoName}:`, report);
+        }
     } catch (error) {
         console.error('Error:', error);
     }
