@@ -1,0 +1,17 @@
+{
+  "name": "github-api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@octokit/rest": "^latest",
+    "dotenv": "^latest"
+  },
+  "devDependencies": {
+    "@types/node": "^latest",
+    "@types/dotenv": "^latest",
+    "typescript": "^latest"
+  }
+}
