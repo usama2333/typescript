@@ -1,6 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
+import cron from "node-cron";
 dotenv.config();
 const octokit = new Octokit({
     auth: process.env.GITHUB_TOKEN,
@@ -258,23 +259,20 @@ function generateTableSection(title, sectionData) {
     </table>
     `;
 }
-(async () => {
-    try {
-        const repoOwner = "rapid-recovery-agency-inc";
-        // const allRepoNames = await getAllRepositories(repoOwner);
-        const allReports = {};
-        const repoNames = await getAllRepositories(repoOwner);
-        for (let i = 0; i < repoNames.length; i++) {
-            const repoName = repoNames[i];
-            const report = await generateReport(repoOwner, repoName);
-            allReports[repoName] = report;
-            printProgress(i + 1, repoNames.length);
-        }
-        const emailBody = prepareEmailBody(allReports);
-        await sendEmail("GitHub Repositories Report", emailBody);
-        console.log("Report sent successfully.");
+async function main() {
+    const repos = await getAllRepositories("rapid-recovery-agency-inc");
+    const reports = [];
+    const totalRepos = repos.length;
+    for (let i = 0; i < totalRepos; i++) {
+        const repoName = repos[i];
+        printProgress(i + 1, totalRepos);
+        const report = await generateReport("rapid-recovery-agency-inc", repoName);
+        reports.push(report);
     }
-    catch (error) {
-        console.error("Error:", error);
-    }
-})();
+    const emailBody = prepareEmailBody(reports);
+    await sendEmail("GitHub Metrics Report", emailBody);
+}
+await main();
+cron.schedule("0 0 * * 0", async () => {
+    await main();
+});
